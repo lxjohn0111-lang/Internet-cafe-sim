@@ -1,0 +1,16 @@
+import { createRequire } from 'module'; const require = createRequire(import.meta.url); const { chromium, devices } = require('playwright');
+const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+const ctx = await browser.newContext({ ...devices['Pixel 7'] });
+const page = await ctx.newPage();
+const logs = [];
+page.on('pageerror', (e) => logs.push(`[pageerror] ${e.message}`));
+await page.goto('http://localhost:4173/', { waitUntil: 'load' });
+await page.waitForFunction(() => window.__game && window.__game.started, null, { timeout: 120000 });
+await page.screenshot({ path: 'tools/shots/70_mobile_start.png' });
+await page.tap('#clicktoplay');
+await page.waitForTimeout(500);
+const r = await page.evaluate(() => { const g = window.__game; g.simulate(5); return { touch: g.input.touchMode, q: g.renderer.qualityName, locked: g.input.locked }; });
+console.log(JSON.stringify(r));
+await page.screenshot({ path: 'tools/shots/71_mobile_play.png' });
+console.log(logs.join('\n'));
+await browser.close();

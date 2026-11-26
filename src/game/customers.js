@@ -466,7 +466,7 @@ export class Customers {
       if (ai.hits >= (npc.hp || 3)) {
         npc.play('handsUp', 0.3); npc.say(pick(LINES.thugKO), 3, { shout: true });
         ai.override = (dt) => { ai.koT = (ai.koT || 0) + dt; if (ai.koT > 1.6) { this.thugFlee(npc); return false; } return true; };
-      } else { ai.angry = true; ai.state = 'fight'; ai.fightStart = ai.t; npc.say(pick(LINES.thugHit), 2, { shout: true }); }
+      } else { ai.angry = true; ai.state = 'fight'; ai.fightStart = ai.t; ai.chaseT = 0; npc.say(pick(LINES.thugHit), 2, { shout: true }); }
       return;
     }
     if (ai.role === 'customer') {

@@ -344,9 +344,10 @@ export class World {
     // street lamps
     for (const x of [-14, -2.5, 9, 21]) {
       const l = B.makeStreetLamp(); this.place(l, x, 0, 9.6, Math.PI, this.dynGroup);
-      const sp = new THREE.SpotLight(0xffc888, 0, 14, 0.9, 0.6, 1.6); sp.position.set(x, 5.3, 8.3); sp.target.position.set(x, 0, 8.0);
-      this.scene.add(sp); this.scene.add(sp.target);
-      this.lights.street.push({ spot: sp, bulb: l.userData.bulb });
+      // cheap fake light pool instead of a real spotlight (keeps the light count low)
+      const pool = new THREE.Mesh(B.pl(7, 7), this.poolMat || (this.poolMat = new THREE.MeshBasicMaterial({ map: T.tex((() => { const c = T.makeCanvas(128, 128); const x = c.getContext('2d'); const gr = x.createRadialGradient(64, 64, 0, 64, 64, 64); gr.addColorStop(0, 'rgba(255,200,140,0.55)'); gr.addColorStop(0.5, 'rgba(255,180,110,0.18)'); gr.addColorStop(1, 'rgba(255,170,100,0)'); x.fillStyle = gr; x.fillRect(0, 0, 128, 128); return c; })()), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0 })));
+      pool.rotation.x = -Math.PI / 2; pool.position.set(x, 0.02, 8.2); this.scene.add(pool);
+      this.lights.street.push({ pool, bulb: l.userData.bulb });
     }
     // trees on sidewalk
     for (const x of [-10, 4.5, 14]) {
@@ -448,7 +449,7 @@ export class World {
     for (const l of this.lights.interior) l.intensity = on ? l.userData.base : 0;
     for (const p of this.lights.panels) p.userData.panel.material = on ? M.lightPanel : M.screenOff;
     for (const n of this.lights.neon) n.visible = on;
-    M.ledCyan.emissiveIntensity = on ? 3 : 0; M.ledPink.emissiveIntensity = on ? 3 : 0; M.rgb.emissiveIntensity = on ? 3.5 : 0; M.fridgeLight.emissiveIntensity = on ? 2.4 : 0;
+    M.ledCyan.emissiveIntensity = on ? 3 : 0; M.ledPink.emissiveIntensity = on ? 3 : 0; M.rgb.emissiveIntensity = on ? 3.5 : 0; M.fridgeLight.emissiveIntensity = on ? 1.05 : 0;
     this.emergency.intensity = on ? 0 : 6;
     for (const s of this.screens) s.setPower(on);
   }
@@ -480,7 +481,7 @@ export class World {
     const night = 1 - day;
     for (const s of this.lights.street) {
       if (s.facade) s.facade.emissiveIntensity = night * 1.2;
-      if (s.spot) { s.spot.intensity = night * 60; s.bulb.material = night > 0.3 ? M.ledWarm : M.whitePlastic; }
+      if (s.pool) { this.poolMat.opacity = night; s.bulb.material = night > 0.3 ? M.ledWarm : M.whitePlastic; }
     }
     for (const c of this.cars) { c.obj.userData.hl.emissiveIntensity = 0.3 + night * 4; c.obj.userData.tl.emissiveIntensity = 0.5 + night * 3; }
     if (skyFn) skyFn(hours, day, warm);

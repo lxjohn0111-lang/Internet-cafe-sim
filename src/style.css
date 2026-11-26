@@ -237,8 +237,15 @@ kbd { display: inline-block; min-width: 20px; padding: 1px 6px; border-radius: 4
 
 @media (max-width: 760px) {
   #hud-obj { display: none; }
+  #hud-money { left: 16px; transform: none; top: 104px; padding: 6px 14px; text-align: left; }
+  #hud-tl { padding: 8px 12px; min-width: 0; }
+  #hud-tr { padding: 8px 10px; gap: 8px; }
+  #hud-tr .lvl { width: 42px; height: 42px; }
+  #hud-stars { font-size: 14px; }
+  #banner { top: 170px; padding: 8px 20px; width: 92vw; }
   #hints { display: none; }
-  #feed { width: 220px; top: 84px; }
+  #feed { width: 220px; top: 96px; }
+  .toast { font-size: 12px; }
   #hud-tr .xpbar { width: 90px; }
   #hud-clock { font-size: 24px; }
   .money-main { font-size: 24px; }

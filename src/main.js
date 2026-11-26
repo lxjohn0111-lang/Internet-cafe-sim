@@ -108,6 +108,12 @@ class Game {
     this.events = new Events(this);
     this.renderer.setup(this.scene, this.viewScene, this.player.camera);
     if (st.quality && st.quality !== 'auto') this.renderer.setQuality(st.quality);
+    else {
+      const mobile = this.input.touchMode || Math.min(window.innerWidth, window.innerHeight) < 600;
+      const mem = navigator.deviceMemory || 8;
+      if (mobile || mem <= 4) this.renderer.setQuality(mem <= 2 ? 'low' : 'medium', true);
+    }
+    if (this.input.touchMode) { document.querySelector('.ctp-big').textContent = 'TAP TO TAKE OVER YOUR SHIFT'; }
     this.renderer.onQualityChange = (q) => this.world.setScreenLightCount(q.lights);
     this.world.setScreenLightCount(this.renderer.q.lights);
     this.buildExtras();
@@ -528,7 +534,7 @@ class Game {
     const st = this.state.settings;
     $('clicktoplay').addEventListener('click', () => { audio.init(); audio.setMuted(SDK.muted); audio.setMusicVolume(st.music); audio.setSfxVolume(st.sfx); this.input.lock(); if (this.input.touchMode) { $('clicktoplay').classList.add('hidden'); } });
     this.input.onLockChange = (locked) => {
-      if (locked) { $('clicktoplay').classList.add('hidden'); $('pause').classList.add('hidden'); if (this.paused && !this.overlay) { this.paused = false; SDK.gameplayStart(); } }
+      if (locked) { this.everLocked = true; $('clicktoplay').classList.add('hidden'); $('pause').classList.add('hidden'); if (this.paused && !this.overlay) { this.paused = false; SDK.gameplayStart(); } }
       else if (!this.osOpen && !this.overlay && this.started) this.pause();
     };
     $('btn-resume').addEventListener('click', () => { audio.init(); this.input.lock(); if (this.input.touchMode) this.resume(); });
@@ -540,7 +546,7 @@ class Game {
     bind('set-music', 'music', (v) => audio.setMusicVolume(v));
     bind('set-sfx', 'sfx', (v) => audio.setSfxVolume(v));
     const inv = $('set-invert'); inv.checked = !!st.invert; inv.addEventListener('change', () => { st.invert = inv.checked; this.player.invert = inv.checked; this.save(); });
-    $('btn-reset').addEventListener('click', () => { if (confirm('Start a brand new café? All progress will be lost.')) { SDK.clearData('save'); this.noSave = true; location.reload(); } });
+    $('btn-reset').addEventListener('click', () => { const b = $('btn-reset'); if (b.dataset.armed) { SDK.clearData('save'); this.noSave = true; location.reload(); } else { b.dataset.armed = '1'; b.textContent = 'Click again to wipe ALL progress'; setTimeout(() => { delete b.dataset.armed; b.textContent = 'Start a brand new café'; }, 3000); } });
     $('btn-nextday').addEventListener('click', () => this.nextDay());
     $('btn-double').addEventListener('click', async () => {
       const b = $('btn-double'); b.disabled = true; b.textContent = 'Loading ad…';
@@ -642,7 +648,7 @@ class Game {
     let dt = rdt;
     if (this.slowT > 0) { this.slowT -= rdt; dt *= 0.25; }
     const simRunning = !this.paused && !this.osOpen && !this.overlay && !this.adPause;
-    const active = (this.input.locked || this.input.touchMode) && simRunning;
+    const active = (this.input.locked || this.input.touchMode || !this.everLocked) && simRunning;
     const g = this.renderer.grade.uniforms;
     g.damage.value = Math.max(0, g.damage.value - rdt * 1.8);
     g.flash.value = Math.max(0, g.flash.value - rdt * 1.5);

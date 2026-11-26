@@ -119,7 +119,7 @@ export function buildMaterials(anisotropy = 8) {
   M.ledRed = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xff2020, emissiveIntensity: 4 });
   M.ledGreen = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0x30ff60, emissiveIntensity: 4 });
   M.rgb = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xff00ff, emissiveIntensity: 3.5 }); // animated hue
-  M.fridgeLight = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xe8f4ff, emissiveIntensity: 2.4 });
+  M.fridgeLight = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xe8f4ff, emissiveIntensity: 1.05 });
 
   return M;
 }

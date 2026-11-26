@@ -16,7 +16,7 @@ for (const st of steps) {
   const r = await page.evaluate(st.js).catch(e => 'ERR ' + e.message);
   if (r !== undefined && r !== null) console.log(`step ${i}:`, typeof r === 'string' ? r : JSON.stringify(r));
   if (st.wait) await page.waitForTimeout(st.wait);
-  if (st.shot) await page.screenshot({ path: `${shots}/${st.shot}.png` });
+  if (st.shot) await page.screenshot({ path: `${shots}/${st.shot}.png`, timeout: 180000 });
 }
 console.log(logs.slice(0, 40).join('\n'));
 await browser.close();

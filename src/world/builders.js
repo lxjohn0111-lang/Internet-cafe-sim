@@ -400,7 +400,7 @@ export function makeFridge() {
   inst.material = new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.7, roughness: 0.3 });
   g.add(inst);
   g.userData.cans = inst;
-  const light = new THREE.PointLight(0xdff0ff, 1.2, 2.5, 2); light.position.set(0, 1.2, 0.6); g.add(light);
+  const light = new THREE.PointLight(0xdff0ff, 0.7, 2.5, 2); light.position.set(0, 1.2, 0.6); g.add(light);
   return g;
 }
 
