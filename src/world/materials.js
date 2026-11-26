@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import * as T from './textures.js';
+import { assetUrl } from '../assets.js';
 
 // Central PBR material library.
 export const M = {};
@@ -16,16 +17,16 @@ function loadTex(loader, url, srgb, repeat) {
   });
 }
 
-export async function loadTextures(base, onProgress) {
+export async function loadTextures(onProgress) {
   const L = new THREE.TextureLoader();
   const list = [
-    ['woodD', 'textures/hardwood2_diffuse.jpg', true], ['woodB', 'textures/hardwood2_bump.jpg', false], ['woodR', 'textures/hardwood2_roughness.jpg', false],
-    ['brickD', 'textures/brick_diffuse.jpg', true], ['brickB', 'textures/brick_bump.jpg', false], ['brickR', 'textures/brick_roughness.jpg', false],
-    ['tileD', 'textures/floor_tile_diffuse.jpg', true], ['tileN', 'textures/floor_tile_normal.jpg', false],
-    ['carbon', 'textures/carbon.png', true], ['carbonN', 'textures/carbon_normal.png', false],
+    ['woodD', 'hardwood2_diffuse', true], ['woodB', 'hardwood2_bump', false], ['woodR', 'hardwood2_roughness', false],
+    ['brickD', 'brick_diffuse', true], ['brickB', 'brick_bump', false], ['brickR', 'brick_roughness', false],
+    ['tileD', 'floor_tile_diffuse', true], ['tileN', 'floor_tile_normal', false],
+    ['carbon', 'carbon', true], ['carbonN', 'carbon_normal', false],
   ];
   let n = 0;
-  await Promise.all(list.map(async ([k, url, srgb]) => { TX[k] = await loadTex(L, base + url, srgb); n++; onProgress && onProgress(n / list.length); }));
+  await Promise.all(list.map(async ([k, name, srgb]) => { TX[k] = await loadTex(L, assetUrl(`textures/${name}.webp`), srgb); n++; onProgress && onProgress(n / list.length); }));
 }
 
 function rep(t, x, y) { if (!t) return null; const c = t.clone(); c.repeat.set(x, y); c.needsUpdate = true; return c; }

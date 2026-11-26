@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+import { assetUrl } from '../assets.js';
 
 // Photographic sky dome blending real HDR captures (day / sunset / night) by time of day.
 export class Sky {
@@ -27,9 +27,9 @@ export class Sky {
           vec3 nightG = mix(vec3(0.03, 0.04, 0.08), vec3(0.005, 0.008, 0.02), pow(h, 0.5));
           col = dayG * wDay + setG * wSunset + nightG * wNight;
           if (hasTex > 0.5) {
-            vec3 a = min(texture2D(tDay, eq(d, 1.2)).rgb, vec3(6.0));
-            vec3 b = min(texture2D(tSunset, eq(d, 2.6)).rgb, vec3(8.0));
-            vec3 c = min(texture2D(tNight, eq(d, 0.0)).rgb, vec3(4.0)) * 2.5;
+            vec3 a = texture2D(tDay, eq(d, 1.2)).rgb * 2.4;
+            vec3 b = texture2D(tSunset, eq(d, 2.6)).rgb * 2.6;
+            vec3 c = texture2D(tNight, eq(d, 0.0)).rgb * 0.9;
             col = a * wDay + b * wSunset + c * wNight;
           }
           // stars at night
@@ -47,10 +47,10 @@ export class Sky {
     scene.add(this.mesh);
   }
 
-  async load(base) {
-    const L = new RGBELoader();
-    const get = (f) => new Promise((res) => L.load(base + f, (t) => { t.minFilter = THREE.LinearFilter; t.magFilter = THREE.LinearFilter; t.generateMipmaps = false; res(t); }, undefined, () => res(null)));
-    const [d, s, n] = await Promise.all([get('hdr/pedestrian_overpass_1k.hdr'), get('hdr/venice_sunset_1k.hdr'), get('hdr/moonless_golf_1k.hdr')]);
+  async load() {
+    const L = new THREE.TextureLoader();
+    const get = (f) => new Promise((res) => L.load(assetUrl('sky/' + f), (t) => { t.colorSpace = THREE.SRGBColorSpace; t.minFilter = THREE.LinearFilter; t.generateMipmaps = false; res(t); }, undefined, () => res(null)));
+    const [d, s, n] = await Promise.all([get('day.webp'), get('sunset.webp'), get('night.webp')]);
     if (d && s && n) { this.uniforms.tDay.value = d; this.uniforms.tSunset.value = s; this.uniforms.tNight.value = n; this.uniforms.hasTex.value = 1; }
   }
 

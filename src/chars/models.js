@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
+import { assetBuffer } from '../assets.js';
 
 // Character pipeline: loads Mixamo-rigged models, measures their T-pose, retargets animations
 // between rigs in world space and procedurally authors extra poses (sitting, typing, cheering...).
@@ -313,11 +314,21 @@ const POSE_CFG = {
   carry: { duration: 1, subset: UPPER }, flail: { duration: 2, subset: UPPER },
 };
 
-export async function loadCharacters(base, onProgress) {
+// Parse a GLB from memory. Embedded textures go through <img> + blob: URLs (createImageBitmap is
+// hidden while the parser is created), which works on every mobile browser and under strict CSPs.
+function parseGLB(loader, buffer) {
+  return new Promise((res, rej) => {
+    const cib = window.createImageBitmap;
+    try { window.createImageBitmap = undefined; } catch (e) { /* read-only */ }
+    try { loader.parse(buffer, '', res, rej); } finally { try { window.createImageBitmap = cib; } catch (e) { /* ignore */ } }
+  });
+}
+
+export async function loadCharacters(onProgress) {
   const loader = new GLTFLoader();
   const files = { soldier: 'models/Soldier.glb', xbot: 'models/Xbot.glb', michelle: 'models/Michelle.glb', robot: 'models/RobotExpressive.glb' };
   const g = {}; let n = 0;
-  await Promise.all(Object.entries(files).map(([k, f]) => new Promise((res, rej) => loader.load(base + f, (gl) => { g[k] = gl; n++; onProgress && onProgress(n / 4); res(); }, undefined, rej))));
+  await Promise.all(Object.entries(files).map(async ([k, f]) => { g[k] = await parseGLB(loader, await assetBuffer(f)); n++; onProgress && onProgress(n / 4); }));
   const bases = {
     soldier: new BaseModel('soldier', g.soldier, 'TPose'),
     xbot: new BaseModel('xbot', g.xbot, null),

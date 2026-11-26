@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <title>Ping Palace — Net Café Simulator</title>
+  <title>Ping Palace</title>
   <meta name="description" content="Run your own chaotic first-person net café. Serve gamers, fix PCs, punch troublemakers and survive the weirdest shifts ever." />
   <script async src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>
   <link rel="stylesheet" href="./src/style.css" />
@@ -84,7 +84,7 @@
       <button class="btn primary" id="btn-resume">▶ RESUME</button>
       <div class="pause-section">
         <label>Graphics <select id="set-quality"><option value="auto">Auto</option><option value="ultra">Ultra</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select></label>
-        <label>Mouse sensitivity <input type="range" id="set-sens" min="0.2" max="3" step="0.05" /></label>
+        <label>Look sensitivity <input type="range" id="set-sens" min="0.2" max="3" step="0.05" /></label>
         <label>Field of view <input type="range" id="set-fov" min="60" max="100" step="1" /></label>
         <label>Music <input type="range" id="set-music" min="0" max="1" step="0.01" /></label>
         <label>Sound FX <input type="range" id="set-sfx" min="0" max="1" step="0.01" /></label>
@@ -123,13 +123,13 @@
   <!-- TOUCH -->
   <div id="touch" class="hidden">
     <div id="t-stick"><div id="t-knob"></div></div>
+    <div id="t-top"><button id="t-pause" aria-label="Pause">❚❚</button><button data-t="phone" class="t-btn t-small" aria-label="Phone shop">📱</button></div>
     <div class="t-btns">
+      <button data-t="interact" class="t-btn t-e">E</button>
       <button data-t="punch" class="t-btn big">👊</button>
-      <button data-t="interact" class="t-btn">E</button>
       <button data-t="throw" class="t-btn">🫳</button>
       <button data-t="jump" class="t-btn">⤒</button>
       <button data-t="sprint" class="t-btn">»</button>
-      <button data-t="phone" class="t-btn">📱</button>
     </div>
   </div>
 

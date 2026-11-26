@@ -54,10 +54,11 @@ const GradeShader = {
 };
 
 export const QUALITY = {
-  ultra: { pr: 2, shadow: 2048, ao: 'full', bloom: true, smaa: true, lights: 8 },
-  high: { pr: 1.5, shadow: 2048, ao: 'half', bloom: true, smaa: true, lights: 6 },
-  medium: { pr: 1, shadow: 1024, ao: null, bloom: true, smaa: true, lights: 4 },
-  low: { pr: 0.75, shadow: 512, ao: null, bloom: false, smaa: false, lights: 0 },
+  ultra: { pr: 2, shadow: 2048, ao: 'full', bloom: true, smaa: true, lights: 8, spotShadow: true },
+  high: { pr: 1.5, shadow: 2048, ao: 'half', bloom: true, smaa: true, lights: 6, spotShadow: true },
+  medium: { pr: 1, shadow: 1024, ao: null, bloom: true, smaa: true, lights: 3, spotShadow: false },
+  // low = phones: render straight to the screen (no post-processing), no shadows, fewer lights
+  low: { pr: 1, shadow: 0, ao: null, bloom: false, smaa: false, lights: 0, spotShadow: false, direct: true, lean: true },
 };
 
 export class Renderer {
@@ -68,6 +69,7 @@ export class Renderer {
     r.toneMappingExposure = 1.0;
     r.shadowMap.enabled = true;
     r.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.grade = new ShaderPass(GradeShader);
     this.qualityName = 'high';
     this.q = QUALITY.high;
     this.time = 0;
@@ -86,11 +88,17 @@ export class Renderer {
 
   _build() {
     const r = this.r;
-    if (this.composer) { this.composer.passes.forEach((p) => p.dispose && p.dispose()); this.composer.dispose(); }
+    if (this.composer) { this.composer.passes.forEach((p) => p.dispose && p.dispose()); this.composer.dispose(); this.composer = null; }
+    const wantShadows = this.q.shadow > 0;
+    if (r.shadowMap.enabled !== wantShadows) {
+      r.shadowMap.enabled = wantShadows;
+      [this.scene, this.viewScene].forEach((sc) => sc && sc.traverse((o) => { if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => { m.needsUpdate = true; }); }));
+    }
     const w = window.innerWidth, h = window.innerHeight;
     const pr = Math.min(window.devicePixelRatio || 1, this.q.pr);
     r.setPixelRatio(pr);
     r.setSize(w, h, false);
+    if (this.q.direct) { this.aoPass = null; this.bloom = null; return; }
     const rt = new THREE.WebGLRenderTarget(w * pr, h * pr, { type: THREE.HalfFloatType, samples: 0 });
     const composer = this.composer = new EffectComposer(r, rt);
     composer.setPixelRatio(pr);
@@ -116,7 +124,9 @@ export class Renderer {
       composer.addPass(this.bloom);
     } else this.bloom = null;
     composer.addPass(new OutputPass());
+    const prevU = this.grade && this.grade.uniforms;
     this.grade = new ShaderPass(GradeShader);
+    if (prevU) for (const k of ['damage', 'flash', 'wobble', 'blackout']) this.grade.uniforms[k].value = prevU[k].value;
     composer.addPass(this.grade);
     if (this.q.smaa) composer.addPass(new SMAAPass(w * pr, h * pr));
   }
@@ -124,6 +134,7 @@ export class Renderer {
   setQuality(name, fromAuto = false) {
     if (!QUALITY[name]) return;
     if (!fromAuto) this.auto = false;
+    if (name === this.qualityName && this.composer !== undefined && (this.composer || this.q.direct)) { if (this.onQualityChange) this.onQualityChange(this.q); return; }
     this.qualityName = name;
     this.q = QUALITY[name];
     this._build();
@@ -136,8 +147,7 @@ export class Renderer {
     const pr = Math.min(window.devicePixelRatio || 1, this.q.pr);
     this.r.setPixelRatio(pr);
     this.r.setSize(w, h, false);
-    this.composer.setPixelRatio(pr);
-    this.composer.setSize(w, h);
+    if (this.composer) { this.composer.setPixelRatio(pr); this.composer.setSize(w, h); }
     if (this.aoPass) this.aoPass.setSize(w * pr, h * pr);
   }
 
@@ -160,6 +170,12 @@ export class Renderer {
   render(dt) {
     this.time += dt;
     this.grade.uniforms.time.value = this.time;
+    if (!this.composer) {
+      const r = this.r;
+      r.render(this.scene, this.camera);
+      r.autoClear = false; r.clearDepth(); r.render(this.viewScene, this.camera); r.autoClear = true;
+      return;
+    }
     this.composer.render(dt);
   }
 }

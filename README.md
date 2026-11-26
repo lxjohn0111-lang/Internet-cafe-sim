@@ -86,14 +86,29 @@ Touch devices get a virtual joystick, look-drag and action buttons automatically
 
 ```bash
 npm install
-npm run dev        # local dev server
-npm run build      # production build -> dist/
-npm run package    # build + zip dist/ into ping-palace-crazygames.zip for upload
+npm run dev              # local dev server
+npm run build            # -> dist/index.html  (ONE self-contained file, ~7 MB)
+npm run build:artifact   # same game without the CrazyGames SDK tag (claude.ai artifact page)
+npm run assets           # re-optimise models/textures/skies from assets-src/ into src/assets/
 ```
 
-Upload `ping-palace-crazygames.zip` (or the contents of `dist/`) as an HTML5 game in the
-CrazyGames developer portal. The build uses relative paths and works inside their iframe. The
-SDK script tag is already in `index.html`.
+`npm run build` produces a single `dist/index.html`. All JavaScript, CSS, 3D models, textures
+and sky images are embedded inside it, so **upload only that one file** to CrazyGames (HTML5 game).
+It also runs when opened directly from disk.
+
+### Mobile
+
+On phones the game starts in the *Low* preset. Low renders straight to the screen with no
+post-processing, turns shadows off, uses fewer lights, spawns fewer pedestrians and refreshes the
+PC screens less often. Auto-quality still adjusts based on the measured frame rate. Touch controls:
+
+- A floating joystick appears wherever your left thumb lands. Push it far to sprint.
+- Drag on the right side of the screen to look.
+- The buttons are E (it glows when there is something to interact with), punch (hold to charge a
+  MEGA punch), throw, jump and sprint.
+- Pause and phone-shop buttons sit at the top of the screen.
+
+The HUD has compact layouts for both portrait and landscape.
 
 ## Project structure
 
@@ -106,7 +121,8 @@ src/
   chars/             model loading + retargeting + procedural poses, NPC, ragdoll
   game/              player, customers AI, events, stations, items, nav, robot, state/data
   ui/                HUD and the in-game "PingOS" computer
-public/assets/       models, textures, HDRIs
+src/assets/          optimised models / textures / skies (embedded in the build)
+assets-src/          original source assets
 ```
 
 ## Credits and licenses

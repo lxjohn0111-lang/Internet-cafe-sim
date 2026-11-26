@@ -128,7 +128,7 @@ export class Customers {
     }
     // pedestrians always
     this.pedAcc -= dt;
-    if (this.pedAcc <= 0) { this.pedAcc = R(5, 12); if (g.npcs.length < 26) this.spawnPedestrian(); }
+    if (this.pedAcc <= 0) { this.pedAcc = R(5, 12) * (g.lean ? 1.8 : 1); if (g.npcs.length < (g.lean ? 14 : 26)) this.spawnPedestrian(); }
 
     for (const npc of g.npcs.slice()) {
       if (!npc.alive || !npc.ai) continue;

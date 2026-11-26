@@ -412,6 +412,19 @@ export class World {
     for (let i = 0; i < 8; i++) { const l = new THREE.PointLight(0x9ab8ff, 0, 2.6, 2); scene.add(l); this.screenLights.push(l); }
   }
 
+  applyQuality(q) {
+    const sun = this.sun;
+    if (sun.castShadow !== q.shadow > 0 || (q.shadow && sun.shadow.mapSize.x !== q.shadow)) {
+      sun.castShadow = q.shadow > 0;
+      if (q.shadow) { sun.shadow.mapSize.set(q.shadow, q.shadow); if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; } }
+    }
+    this.keySpots[0].castShadow = !!q.spotShadow;
+    // on phones keep only the lights that matter most
+    const keep = new Set(this.lights.interior.slice(0, 4).concat(this.keySpots));
+    for (const l of this.lights.interior) l.visible = !q.lean || keep.has(l);
+    this.fridge.traverse((o) => { if (o.isLight) o.visible = !q.lean; });
+  }
+
   setScreenLightCount(n) { this.screenLights.forEach((l, i) => { l.visible = i < n; }); this.screenLightCount = n; }
 
   // merge static meshes by material to save draw calls

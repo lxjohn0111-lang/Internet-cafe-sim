@@ -6,8 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview",
-    "package": "vite build && cd dist && zip -qr ../ping-palace-crazygames.zip . && echo 'Created ping-palace-crazygames.zip'"
+    "build:artifact": "BUILD_TARGET=artifact vite build && node tools/make-artifact.mjs",
+    "assets": "node tools/optimize-assets.mjs",
+    "preview": "vite preview"
   },
   "dependencies": {
     "cannon-es": "^0.20.0",
@@ -15,7 +16,13 @@
     "three": "^0.170.0"
   },
   "devDependencies": {
+    "@gltf-transform/cli": "^4.1.1",
     "@gltf-transform/core": "^4.1.1",
-    "vite": "^5.4.11"
+    "@gltf-transform/extensions": "^4.1.1",
+    "@gltf-transform/functions": "^4.1.1",
+    "meshoptimizer": "^0.22.0",
+    "sharp": "^0.33.5",
+    "vite": "^5.4.11",
+    "vite-plugin-singlefile": "^2.0.3"
   }
 }

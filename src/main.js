@@ -27,8 +27,8 @@ const $ = (id) => document.getElementById(id);
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
 const R = (a, b) => a + Math.random() * (b - a);
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
-const ASSETS = 'assets/';
-const K = (k) => `<kbd>${k}</kbd>`;
+const TOUCH_LABEL = { E: 'E', 'Hold E': 'Hold E', LMB: '👊', RMB: '🫳', Tab: '📱', Q: '🫳' };
+const K = (k) => (document.body.classList.contains('touch') ? `<kbd>${TOUCH_LABEL[k] || k}</kbd>` : `<kbd>${k}</kbd>`);
 
 const TIPS = [
   'Tip: Hold the left mouse button to charge a MEGA punch.',
@@ -77,7 +77,7 @@ class Game {
     this.physics = new Physics();
     this.input = new Input(canvas);
     prog(0.06, 'Loading textures…');
-    await loadTextures(ASSETS, (k) => prog(0.06 + k * 0.22));
+    await loadTextures((k) => prog(0.06 + k * 0.22));
     buildMaterials();
     const pmrem = new THREE.PMREMGenerator(this.renderer.r);
     this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
@@ -93,9 +93,9 @@ class Game {
     this.screens = new ScreenManager(); this.screens.list = this.world.screens;
     this.sky = new Sky(this.scene);
     prog(0.42, 'Loading the sky…');
-    await this.sky.load(ASSETS);
+    await this.sky.load();
     prog(0.5, 'Waking up the customers…');
-    this.chars = await loadCharacters(ASSETS, (k) => prog(0.5 + k * 0.3));
+    this.chars = await loadCharacters((k) => prog(0.5 + k * 0.3));
     prog(0.85, 'Plugging in the PCs…');
     await tick();
     this.nav = new Nav(this.world);
@@ -109,13 +109,14 @@ class Game {
     this.renderer.setup(this.scene, this.viewScene, this.player.camera);
     if (st.quality && st.quality !== 'auto') this.renderer.setQuality(st.quality);
     else {
-      const mobile = this.input.touchMode || Math.min(window.innerWidth, window.innerHeight) < 600;
+      const small = Math.min(screen.width, screen.height) < 600 || Math.min(window.innerWidth, window.innerHeight) < 500;
       const mem = navigator.deviceMemory || 8;
-      if (mobile || mem <= 4) this.renderer.setQuality(mem <= 2 ? 'low' : 'medium', true);
+      if (this.input.touchMode) this.renderer.setQuality(small || mem <= 4 ? 'low' : 'medium', true);
+      else if (mem <= 4) this.renderer.setQuality('medium', true);
     }
     if (this.input.touchMode) { document.querySelector('.ctp-big').textContent = 'TAP TO TAKE OVER YOUR SHIFT'; }
-    this.renderer.onQualityChange = (q) => this.world.setScreenLightCount(q.lights);
-    this.world.setScreenLightCount(this.renderer.q.lights);
+    this.renderer.onQualityChange = (q) => this.applyQuality(q);
+    this.applyQuality(this.renderer.q);
     this.buildExtras();
     this.stations = [];
     for (const d of this.state.stations) this.addStation(d, true);
@@ -149,8 +150,16 @@ class Game {
     this.last = performance.now();
     requestAnimationFrame(() => this.loop());
     setInterval(() => this.updateCrypto(), 1000);
-    document.addEventListener('visibilitychange', () => { if (document.hidden && this.started) this.save(); });
+    document.addEventListener('visibilitychange', () => { if (document.hidden && this.started) { this.save(); if (!this.overlay && !this.osOpen) { if (this.input.touchMode || this.input.fallback) this.pause(); } } });
+    const tp = $('t-pause'); if (tp) tp.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); if (!this.paused && !this.overlay) this.pause(); }, { passive: false });
     window.addEventListener('beforeunload', () => this.save());
+  }
+
+  applyQuality(q) {
+    this.world.setScreenLightCount(q.lights);
+    this.world.applyQuality(q);
+    this.lean = !!q.lean;
+    if (this.screens) this.screens.perFrame = q.lean ? 2 : 4;
   }
 
   // ---------- extras: router, robot, ghost slots ----------
@@ -537,7 +546,7 @@ class Game {
       if (locked) { this.everLocked = true; $('clicktoplay').classList.add('hidden'); $('pause').classList.add('hidden'); if (this.paused && !this.overlay) { this.paused = false; SDK.gameplayStart(); } }
       else if (!this.osOpen && !this.overlay && this.started) this.pause();
     };
-    $('btn-resume').addEventListener('click', () => { audio.init(); this.input.lock(); if (this.input.touchMode) this.resume(); });
+    $('btn-resume').addEventListener('click', () => { audio.init(); if (this.input.touchMode) { this.resume(); return; } this.input.lock(); });
     const q = $('set-quality'); q.value = st.quality || 'auto';
     q.addEventListener('change', () => { st.quality = q.value; if (q.value === 'auto') { this.renderer.auto = true; this.renderer.setQuality('high', true); } else this.renderer.setQuality(q.value); this.save(); });
     const bind = (id, key, fn) => { const el = $(id); el.value = st[key]; el.addEventListener('input', () => { st[key] = Number(el.value); fn(st[key]); }); el.addEventListener('change', () => this.save()); };
@@ -698,6 +707,7 @@ class Game {
     // HUD
     const act = this.player.focusAction;
     this.hud.setPrompt(active ? act : null, this.player.holdProg);
+    if (this.input.touchMode) { const ready = !!(active && act && act.run); if (ready !== this._eReady) { this._eReady = ready; document.querySelector('.t-e').classList.toggle('ready', ready); } }
     const held = this.player.held;
     this.hud.setCarry(held ? `Holding: <b>${held.def.name}</b> · ${K('RMB')} throw · ${K('Q')} drop` : '');
     this.hud.setCharge(this.player.charge);
