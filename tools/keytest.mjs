@@ -1,0 +1,34 @@
+import { createRequire } from 'module'; const require = createRequire(import.meta.url); const { chromium } = require('playwright');
+const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+const logs = []; page.on('pageerror', (e) => logs.push('[pageerror] ' + e.message));
+await page.goto('http://localhost:4173/', { waitUntil: 'load' });
+await page.waitForFunction(() => window.__game && window.__game.started, null, { timeout: 120000 });
+await page.evaluate(() => { window.__look = (px, pz, tx, ty, tz) => { const g = window.__game, p = g.player; p.pos.set(px, 0, pz); const e = p.eye; p.yaw = Math.atan2(-(tx - e.x), -(tz - e.z)); p.pitch = Math.atan2(ty - e.y, Math.hypot(tx - e.x, tz - e.z)); p.vel.set(0, 0, 0); g.simulate(0.05); return 1; }; });
+await page.evaluate(() => { const g = window.__game; g.renderer.setQuality('low'); g.input.locked = true; document.getElementById('clicktoplay').classList.add('hidden'); g.simulate(25); });
+// aim helper: put player at p looking at target t, then real E key press
+const tryE = async (label, setup, check) => {
+  const before = await page.evaluate(setup);
+  await page.waitForTimeout(150);
+  const focus = await page.evaluate(() => { const g = window.__game; return g.player.focus ? g.player.focus.type + (g.player.focusAction ? ' | ' + g.player.focusAction.text.replace(/<[^>]+>/g, '') : ' | no action') : 'none'; });
+  await page.keyboard.down('KeyE'); await page.waitForTimeout(120); await page.keyboard.up('KeyE'); await page.waitForTimeout(150);
+  const after = await page.evaluate(check);
+  console.log(label.padEnd(22), '| focus:', focus.padEnd(55), '| result:', JSON.stringify(after));
+};
+const look = (px, pz, tx, ty, tz) => `(()=>window.__look(${px},${pz},${tx},${ty},${tz}))()`;
+const L = (px, pz, tx, ty, tz) => `window.__look(${px},${pz},${tx},${ty},${tz})`;
+await tryE('fridge', look(6.3, 0.3, 7.3, 1.1, 0.3), '(()=>window.__game.player.held&&window.__game.player.held.kind)()');
+await tryE('drop then register', `(()=>{const g=window.__game; g.player.drop(0); g.state.register=37; ${L(5.0, 1.0, 5.0, 1.15, 1.95)}; return 1})()`, '(()=>({reg:window.__game.state.register, money:Math.round(window.__game.state.money)}))()');
+await tryE('shelf', look(6.6, -1.8, 7.5, 1.0, -1.8), '(()=>window.__game.player.held&&window.__game.player.held.kind)()');
+await tryE('trash on desk', `(()=>{const g=window.__game; g.player.drop(0); g.simulate(0.5); const st=g.stations[0]; const it=g.items.spawn('trash_can', st.slot.toWorld(0.3,-0.25).setY(0.85)); g.simulate(1.0); window.__it=it; const a=st.slot.approach; const p=it.obj.position; ${L('a.x', 'a.z', 'p.x', 'p.y', 'p.z')}; return 1})()`, '(()=>window.__game.player.held&&window.__game.player.held.kind)()');
+await tryE('seated customer give', `(()=>{const g=window.__game; g.player.drop(0); const n=g.seatedCustomers()[0]; if(!n) return 0; n.ai.req=null; g.customers.makeRequest(n,'drink'); const it=g.items.spawn('soda', g.player.camera.position.clone()); g.player.pickUp(it); const a=n.ai.station.slot.approach; const h=n.headPos(); window.__n=n; ${L('a.x+0.3', 'a.z+0.3', 'h.x', 'h.y-0.25', 'h.z')}; return 1})()`, '(()=>({held:window.__game.player.held&&window.__game.player.held.kind, req: window.__n&&window.__n.ai.req&&window.__n.ai.req.type}))()');
+await tryE('trash on desk, empty seat', `(()=>{const g=window.__game; g.player.drop(0); const st=g.stations.find(s=>!s.occupant)||g.stations[2]; const it=g.items.spawn('trash_cup', st.slot.toWorld(0.3,-0.2).setY(0.85)); g.simulate(1.0); const a=st.slot.approach; const p=it.obj.position; return ${L('a.x', 'a.z', 'p.x', 'p.y', 'p.z')}})()`, '(()=>window.__game.player.held&&window.__game.player.held.kind)()');
+await tryE('bin with trash', `(()=>{const g=window.__game; return ${L(3.25, 3.9, 3.25, 0.5, 2.75)}})()`, '(()=>({held: window.__game.player.held&&window.__game.player.held.kind, binned: window.__game.state.day_.binned}))()');
+await tryE('through wall (none)', `(()=>{const g=window.__game; return ${L(6.0, -7.0, 7.5, 1.0, -1.8)}})()`, '(()=>window.__game.player.held&&window.__game.player.held.kind)()');
+await tryE('broken PC hold-E', `(()=>{const g=window.__game; const st=g.stations[1]; st.breakPC(); const a=st.slot.approach; const c=st.slot.deskCenter; return ${L('a.x', 'a.z', 'c.x', '1.05', 'c.z')}})()`, '(()=>({broken: window.__game.stations[1].broken}))()');
+await page.keyboard.down('KeyE'); await page.waitForTimeout(7000); await page.keyboard.up('KeyE');
+console.log('after holding E: broken =', await page.evaluate(() => window.__game.stations[1].broken));
+await tryE('admin laptop', look(6.3, 1.0, 6.3, 1.15, 1.9), '(()=>window.__game.osOpen)()');
+await page.evaluate(() => window.__game.closeOS(false));
+console.log(logs.join('\n'));
+await browser.close();

@@ -13,9 +13,12 @@ export class Input {
     this.touch = { move: { x: 0, y: 0 }, look: { dx: 0, dy: 0 }, sprint: false };
     this.wantLock = false;
 
+    this.uiBlocking = () => false;
     window.addEventListener('keydown', (e) => {
       const tag = (e.target && e.target.tagName) || '';
-      if (tag === 'INPUT' || tag === 'SELECT') return;
+      // only let form controls swallow keys while a menu is actually open
+      if ((tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') && this.uiBlocking()) return;
+      if ((tag === 'INPUT' || tag === 'SELECT' || tag === 'BUTTON') && e.target.blur) e.target.blur();
       if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab', 'Backspace'].includes(e.code)) e.preventDefault();
       if (!this.keys.has(e.code)) this.pressed.add(e.code);
       this.keys.add(e.code);
@@ -49,6 +52,7 @@ export class Input {
   }
 
   lock() {
+    try { if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur(); } catch (e) { /* ignore */ }
     if (this.touchMode) return;
     if (this.fallback) { this._virtualLock(true); return; }
     const fail = () => { if (!document.pointerLockElement) { this.fallback = true; this._virtualLock(true); } };

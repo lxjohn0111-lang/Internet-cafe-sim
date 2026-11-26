@@ -203,7 +203,7 @@ export class Events {
         id: 'power', name: 'POWER OUTAGE', desc: 'Reset the breaker in the fuse box (back of the café)!', news: 'Entire block goes dark, net café hardest hit', w: 2,
         cond: (g) => g.world.power,
         start: (g, ev) => { g.world.setPower(false); audio.play('powerdown'); g.setWaypoint(V(7.8, 1.5, -4.6), 'FUSE BOX'); g.insideNPCs().forEach((n) => Math.random() < 0.5 && n.say(pick(['NOOO my save!', 'Who turned off the sun?', 'AAAA it\'s dark!']), 2.5, { shout: true })); },
-        update: (g, ev, dt) => { g.world.emergency.intensity = g.world.power ? 0 : 4 + Math.sin(ev.t * 6) * 3; if (ev.t > 50 && !ev.data.left) { ev.data.left = true; g.seatedCustomers().slice(0, 2).forEach((n) => g.customers.standUpAndLeave(n, true)); } return !g.world.power; },
+        update: (g, ev, dt) => { g.world.emergency.intensity = g.world.power ? 0 : 4 + Math.sin(ev.t * 6) * 3; if (ev.t > 50 && !ev.data.left) { ev.data.left = true; g.seatedCustomers().slice(0, 2).forEach((n) => g.customers.standUpAndLeave(n, true)); } if (ev.t > 150 && !g.world.power) { g.world.setPower(true); g.stations.forEach((st) => st.refreshScreen()); g.hud.toast('⚡ The power company fixed it for you. Next time: fuse box!', ''); } return !g.world.power; },
         end: (g) => { g.setWaypoint(null); },
       },
       {

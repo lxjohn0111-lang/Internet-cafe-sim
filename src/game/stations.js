@@ -32,7 +32,7 @@ export class Station {
     this.colliders = [w.colliderLocal(this.group, 0, -0.39, 0.74, 0.4, 0, 0.77, { tag: 'desk' })];
     this.colliders.push(w.colliderLocal(this.group, -0.7, -0.39, 0.03, 0.4, 0.77, 1.3, { nav: false, tag: 'divider' }));
     this.colliders.push(w.colliderLocal(this.group, 0, -0.77, 0.72, 0.03, 0.77, 1.25, { nav: false, tag: 'divider' }));
-    this.hit = w.hitbox(1.4, 0.9, 0.75, slot.toWorld(0, -0.38).setY(1.1), slot.rotY, { type: 'station', station: this });
+    this.hit = w.hitbox(1.3, 0.64, 0.42, slot.toWorld(0, -0.56).setY(1.1), slot.rotY, { type: 'station', station: this });
     this.chairOffset = new THREE.Vector3(0, 0, 0.62);
     this.chairYawOff = (Math.random() - 0.5) * 0.6;
     this.setChairSeated(false);
@@ -99,6 +99,12 @@ export class Station {
     const spin = this.broken || !this.game.world.power ? 0 : (this.occupant && this.occupant.seated ? 30 : 12);
     for (const f of this.fans) f.rotation.z += spin * dt;
     if (this.smokeT > 0) { this.smokeT -= dt; if (Math.random() < dt * 8) this.game.fx.smoke(this.tower.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, 0.45, 0))); }
+    if (this.fire && this.fire.t > 65) {
+      // nobody grabbed the extinguisher: it burns itself out and the PC is wrecked
+      this.fire = null; this.smokeT = 10; this.broken = true; this.refreshScreen();
+      this.game.hud.toast('🔥 The fire burned itself out. That PC is toast — repair it (hold E).', 'bad');
+      this.game.setWaypoint(null);
+    }
     if (this.fire) {
       this.fire.t += dt;
       const p = this.tower.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, 0.35, 0));

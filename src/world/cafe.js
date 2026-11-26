@@ -53,6 +53,22 @@ export class World {
     if (c.phys) c.body = this.physics.addStaticBox((minX + maxX) / 2, (minY + maxY) / 2, (minZ + maxZ) / 2, (maxX - minX) / 2, (maxY - minY) / 2, (maxZ - minZ) / 2);
     return c;
   }
+  // distance along a ray to the nearest wall (slab test against wall colliders)
+  rayWallDistance(o, d, max) {
+    let best = max;
+    for (const c of this.colliders) {
+      if (c.tag !== 'wall') continue;
+      let t0 = 0, t1 = best; let ok = true;
+      for (const [oo, dd, mn, mx] of [[o.x, d.x, c.minX, c.maxX], [o.y, d.y, c.minY, c.maxY], [o.z, d.z, c.minZ, c.maxZ]]) {
+        if (Math.abs(dd) < 1e-8) { if (oo < mn || oo > mx) { ok = false; break; } continue; }
+        let ta = (mn - oo) / dd, tb = (mx - oo) / dd; if (ta > tb) { const tt = ta; ta = tb; tb = tt; }
+        t0 = Math.max(t0, ta); t1 = Math.min(t1, tb); if (t0 > t1) { ok = false; break; }
+      }
+      if (ok && t0 < best) best = t0;
+    }
+    return best;
+  }
+
   removeCollider(c) { const i = this.colliders.indexOf(c); if (i >= 0) this.colliders.splice(i, 1); if (c.body) this.physics.removeBody(c.body); }
   // collider from a rotated local box (axis aligned after rotation multiples of 90°)
   colliderLocal(obj, cx, cz, hw, hd, y0, y1, o) {
@@ -80,7 +96,7 @@ export class World {
     for (const [a, b, ya, yb] of segs) {
       const m = B.add(this.staticGroup, B.bx(b - a, yb - ya, thick), mat, (a + b) / 2, (ya + yb) / 2, z);
       m.userData.wall = true;
-      if (o.collide !== false) this.collider(a, b, z - thick / 2, z + thick / 2, ya, yb);
+      if (o.collide !== false) this.collider(a, b, z - thick / 2, z + thick / 2, ya, yb, { tag: 'wall' });
     }
   }
   wallZ(z0, z1, x, thick, mat, openings = [], h = H, y0 = 0, o = {}) {
@@ -91,7 +107,7 @@ export class World {
     for (const [a, b, ya, yb] of segs) {
       const m = B.add(this.staticGroup, B.bx(thick, yb - ya, b - a), mat, x, (ya + yb) / 2, (a + b) / 2);
       m.userData.wall = true;
-      if (o.collide !== false) this.collider(x - thick / 2, x + thick / 2, a, b, ya, yb);
+      if (o.collide !== false) this.collider(x - thick / 2, x + thick / 2, a, b, ya, yb, { tag: 'wall' });
     }
   }
   floor(x0, x1, z0, z1, mat, y = 0) {
@@ -134,6 +150,7 @@ export class World {
     this.wallX(-8.2, 8.2, -11.6, 0.2, M.wallAccent);
     this.wallZ(-11.5, -6.2, 1.5, 0.2, M.wallLight, [{ a: -7.4, b: -6.6, y0: 0, y1: 2.2 }]);
     // window frames + glass + sills
+    for (const w of [winA, winB]) this.collider(w.a, w.b, 6.0, 6.2, w.y0, w.y1, { tag: 'wall', nav: false });
     for (const w of [winA, winB]) {
       const cx = (w.a + w.b) / 2, len = w.b - w.a;
       B.add(this.staticGroup, B.bx(len, 0.03, 0.02), M.glass, cx, 1.7, 6.1, { cast: false }).scale.set(1, (w.y1 - w.y0) / 0.03, 1);

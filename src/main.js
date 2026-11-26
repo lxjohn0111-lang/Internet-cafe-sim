@@ -76,6 +76,7 @@ class Game {
     this.viewScene = new THREE.Scene();
     this.physics = new Physics();
     this.input = new Input(canvas);
+    this.input.uiBlocking = () => this.paused || this.osOpen || !!this.overlay;
     prog(0.06, 'Loading textures…');
     await loadTextures((k) => prog(0.06 + k * 0.22));
     buildMaterials();
@@ -218,7 +219,7 @@ class Game {
       const un = LEVEL_UNLOCKS[s.level];
       $('lu-num').textContent = s.level; $('lu-unlocks').innerHTML = un ? 'Unlocked: ' + un.join(' · ') : 'Bonus: +$' + (s.level * 25);
       if (!un) s.money += s.level * 25;
-      const lu = $('levelup'); lu.classList.add('hidden'); void lu.offsetWidth; lu.classList.remove('hidden'); clearTimeout(this._lu); this._lu = setTimeout(() => lu.classList.add('hidden'), 3300);
+      const lu = $('levelup'); lu.classList.add('hidden'); void lu.offsetWidth; lu.classList.remove('hidden'); document.body.classList.add('lvlup'); clearTimeout(this._lu); this._lu = setTimeout(() => { lu.classList.add('hidden'); document.body.classList.remove('lvlup'); }, 3300);
       this.hud.toast(`⭐ <b>LEVEL ${s.level}!</b> ${un ? 'New stuff in the shop!' : ''}`, 'gold');
       SDK.happytime();
     }
@@ -346,13 +347,18 @@ class Game {
         if (n.rag) return { text: `${n.name} is seeing stars 💫`, sub: 'LMB to keep juggling' };
         if (ai.role === 'thug') return { text: `😈 <b>${n.name}</b> — ${K('LMB')} punch them out!`, sub: `${Math.max(0, (n.hp || 3) - (ai.hits || 0))} hits left` };
         if (ai.special === 'inspector') return { text: '📋 Health Inspector', sub: 'Keep the café clean. Do NOT punch.' };
+        if (ai.req && ai.req.type === 'fix' && ai.station && (ai.station.broken || ai.station.fire)) {
+          // looking at the customer = looking at their PC
+          const a = this.describe({ type: 'station', station: ai.station }, player);
+          if (a) return Object.assign({}, a, { text: a.text.replace('Repair PC', `Repair ${n.name}'s PC`) });
+        }
         if (ai.req) {
           const want = { drink: 'soda', snack: 'chips', coffee: 'coffee', food: 'pizza' }[ai.req.type];
           if (want && held && held.kind === want) return { text: `${K('E')} Give ${held.def.name} to ${n.name}`, run: () => { if (this.customers.fulfil(n, held.kind)) { const it = held; player.held = null; player.holdAnchor.remove(it.obj); this.items.remove(it); } } };
           const where = { drink: 'Soda from the fridge', snack: 'Chips from the shelf', coffee: 'Coffee from the machine', food: 'A pizza from the counter', fix: 'Hold E on their PC to fix it', lag: 'Reboot the router on the counter' }[ai.req.type];
           return { text: `${n.name} wants: ${ai.req.icon}`, sub: where };
         }
-        if (ai.role === 'customer' || ai.role === 'special') return { text: `${K('E')} Chat with ${n.name}`, run: () => { if (this.chatCd > 0) return; this.chatCd = 2; n.say(pick(LINES.chat), 2.8); if (n.ai && n.ai.sat !== undefined) n.ai.sat += 1; } };
+        if (ai.role === 'customer' || ai.role === 'special') return { secondary: true, text: `${K('E')} Chat with ${n.name}`, run: () => { if (this.chatCd > 0) return; this.chatCd = 2; n.say(pick(LINES.chat), 2.8); if (n.ai && n.ai.sat !== undefined) n.ai.sat += 1; } };
         return { text: n.name };
       }
       case 'item': {
@@ -368,7 +374,7 @@ class Game {
         if (st.fire) return { text: '🔥 FIRE! Grab the extinguisher and hold LMB', sub: held && held.kind === 'extinguisher' ? 'Spray it!' : 'Extinguisher is by the fuse box' };
         if (st.haunted) return { text: `${K('Hold E')} Exorcise the haunted PC 👻`, hold: 2.5, key: 'ex' + st.slot.id, tick: () => { if (Math.random() < 0.2) this.fx.sparkle(st.slot.deskCenter.clone().setY(1.1), [0.6, 0.8, 1]); }, run: () => { st.haunted = false; audio.play('powerup'); this.earn(40, st.slot.deskCenter.clone().setY(1.2), { gold: true }); this.hud.toast('👻 Ghost evicted! +$40', 'good'); } };
         if (st.broken) return { text: `${K('Hold E')} Repair PC`, sub: PC_TIERS[st.tier].name, hold: 2.4, key: 'fix' + st.slot.id, tick: () => { audio.play('repair', { pos: st.slot.deskCenter }); if (Math.random() < 0.3) this.fx.sparks(st.tower.getWorldPosition(new THREE.Vector3()).add(V(0, 0.3, 0)), 4); }, run: () => { st.repair(); audio.play('fixed'); this.customers.fixed(st); this.dayStat('fixed', 1); this.state.stats.fixed++; this.addXP(12); if (this.state.stats.fixed >= 5) this.unlock('fixer'); this.hud.pop('FIXED!', st.slot.deskCenter.clone().setY(1.3), 'gold'); } };
-        return { text: `Station ${st.slot.id + 1} · ${PC_TIERS[st.tier].name}${st.slot.vip ? ' · VIP' : ''}`, sub: st.occupant ? `In use by ${st.occupant.name}` : `${K('E')} Manage stations`, run: st.occupant ? null : () => this.openOS('manage') };
+        return { secondary: true, text: `${K('E')} Station ${st.slot.id + 1} · ${PC_TIERS[st.tier].name}${st.slot.vip ? ' · VIP' : ''}`, sub: st.occupant ? `In use by ${st.occupant.name} · E: upgrades` : 'E: upgrades & management', run: () => this.openOS('manage') };
       }
       case 'fridge': return s.stock.soda > 0 ? { text: `${K('E')} Take a soda`, sub: `${s.stock.soda} left`, run: () => { s.stock.soda--; this.updateFridge(); const it = this.items.spawn('soda', player.camera.position.clone(), {}); player.pickUp(it); audio.play('door', { pos: V(7.4, 1, 0.3) }); } } : { text: 'Fridge is empty!', sub: 'Buy a soda crate on the laptop / phone (Tab)' };
       case 'shelf': return s.stock.chips > 0 ? { text: `${K('E')} Take chips`, sub: `${s.stock.chips} left`, run: () => { s.stock.chips--; this.updateFridge(); const it = this.items.spawn('chips', player.camera.position.clone(), {}); player.pickUp(it); } } : { text: 'Shelf is empty!', sub: 'Buy chips on the laptop / phone (Tab)' };
@@ -382,8 +388,8 @@ class Game {
       case 'fuse': return !this.world.power ? { text: `${K('Hold E')} Reset the breaker`, hold: 1.8, key: 'fuse', tick: () => { if (Math.random() < 0.2) this.fx.zap(V(7.75, 1.5, -4.6)); }, run: () => { this.world.setPower(true); audio.play('powerup'); this.addXP(15); this.hud.toast('⚡ Power restored!', 'good'); this.stations.forEach((st) => st.refreshScreen()); } } : { text: 'Fuse box', sub: 'Everything is fine. For now.' };
       case 'bed': {
         const h = this.hours;
-        if (h >= 21 || h < 6) return { text: `${K('E')} Sleep — end Day ${s.day}`, sub: 'Customers will pay and leave', run: () => this.endDay(false) };
-        return { text: 'Your bed', sub: 'You can sleep after 21:00' };
+        if (h >= 18 || h < 6) return { text: `${K('E')} Sleep — end Day ${s.day}`, sub: 'Customers pay and leave, bills are due', run: () => this.endDay(false) };
+        return { text: 'Your bed', sub: `Too early — you can sleep after 18:00 (now ${this.clockText()})` };
       }
       case 'toilet': return this.toiletClogged ? { text: `${K('Hold E')} Unclog toilet 🪠`, hold: 3, key: 'toilet', tick: () => audio.play('mop', { pos: this.world.toiletSpot }), run: () => { this.toiletClogged = false; audio.play('flush', { pos: this.world.toiletSpot }); this.addXP(12); this.earn(5, null, {}); this.hud.toast('🚽 Toilet unclogged. You deserve a medal.', 'good'); } } : { text: `${K('E')} Flush`, run: () => audio.play('flush', { pos: this.world.toiletSpot }) };
       case 'radio': return { text: `${K('E')} Change music`, sub: this.state.upgrades.speakers ? 'Sound system' : 'Tiny radio', run: () => { const styles = ['lofi', 'chill', 'disco']; const i = (styles.indexOf(audio.musicStyle) + 1) % styles.length; audio.setMusicStyle(styles[i]); this.hud.toast(`🎵 Now playing: ${{ lofi: 'Lo-fi Lag Beats', chill: 'Chillwave Ping', disco: 'Disco Defrag' }[styles[i]]}`); } };
@@ -618,6 +624,7 @@ class Game {
     $('summary').classList.add('hidden'); this.overlay = null;
     this.dayEnding = false;
     this.player.pos.set(6.4, 0, -8.6); this.player.yaw = Math.PI * 0.6; this.player.vel.set(0, 0, 0);
+    this.setWaypoint(null); this.toiletClogged = false;
     this.hud.banner(`DAY ${this.state.day}`, 'Rise and grind!', 'The café opens at 08:00. Customers are already waiting.');
     this.events.timer = 25;
     setTimeout(() => this.customers.spawnCustomer(), 1500);
@@ -669,7 +676,7 @@ class Game {
       const h = this.hours;
       if (prevH < 23 && h >= 23) this.hud.toast('🌙 Closing at midnight. Finish up!', '');
       if (prevH < 24 && h >= 24) { this.hud.toast('🛏️ Café closed. Go to bed in the back room to end the day.', 'gold', 8000); this.setWaypoint(V(7.3, 0.8, -9.9), 'BED'); }
-      if (prevH < 21 && h >= 21) this.hud.toast('😴 You can sleep after 21:00 (bed in the back room) — or keep earning until midnight.', '');
+      if (prevH < 18 && h >= 18) this.hud.toast('😴 You can sleep now (bed in the back room) to end the day — or keep earning until midnight.', '');
       if (h >= 26 && !this.dayEnding) this.endDay(true);
       // passive income
       if (Math.floor(prevH) !== Math.floor(h) && this.customers.open) {

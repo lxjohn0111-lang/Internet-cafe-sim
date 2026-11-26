@@ -196,30 +196,25 @@ export class Player {
   handleActions(dt, input) {
     const g = this.game;
     this.punchCd -= dt;
-    // interaction focus
-    this.ray.setFromCamera({ x: 0, y: 0 }, this.camera);
-    this.ray.far = 2.6;
-    const objs = g.world.interactables.concat(g.items.items.filter((i) => i.state === 'world').map((i) => i.obj)).concat(g.extraInteract || []);
-    const hits = this.ray.intersectObjects(objs, true);
-    let ent = null, hitPoint = null;
-    for (const h of hits) { let o = h.object; while (o && !o.userData.ent) o = o.parent; if (o && o.userData.ent) { ent = o.userData.ent; hitPoint = h.point; break; } }
-    this.focus = ent; this.focusPoint = hitPoint;
-    const act = ent ? g.describe(ent, this) : null;
-    this.focusAction = act;
+    // interaction focus (ray + generous assists so small things are easy to use)
+    this.pickFocus();
+    const act = this.focusAction;
     // E interact / hold
     const eDown = input.down('KeyE'), eHit = input.hit('KeyE');
+    // hold timers use real time so they feel the same on slow devices
+    const now = performance.now(); const hdt = Math.min(0.15, Math.max(0, (now - (this._holdClock || now)) / 1000)); this._holdClock = now;
     if (act && act.hold) {
       if (eDown) {
         if (this.holdKey !== act.key) { this.holdKey = act.key; this.holdProg = 0; }
-        this.holdProg += dt / act.hold;
-        if (act.tick) act.tick(dt);
+        this.holdProg += hdt / act.hold;
+        if (act.tick) act.tick(hdt);
         if (this.holdProg >= 1) { this.holdProg = 0; this.holdKey = null; act.run(); this.reach(); }
-      } else { this.holdProg = Math.max(0, this.holdProg - dt * 2); }
+      } else { this.holdProg = Math.max(0, this.holdProg - hdt * 2); }
     } else {
       this.holdProg = 0; this.holdKey = null;
       if (eHit) {
         if (act && act.run) { act.run(); this.reach(); }
-        else if (this.held && !this.held.def.tool) { /* nothing */ }
+        else if (act) g.hud.nudge();
       }
     }
     if (input.hit('KeyQ') && this.held) this.drop(0.8);
@@ -245,6 +240,55 @@ export class Player {
   }
 
   reach() { this.reachT = 0; }
+
+  pickFocus() {
+    const g = this.game;
+    this.ray.setFromCamera({ x: 0, y: 0 }, this.camera);
+    this.ray.far = 2.7;
+    const R = this.ray.ray, o = R.origin, d = R.direction;
+    const objs = g.world.interactables.concat(g.items.items.filter((i) => i.state === 'world').map((i) => i.obj)).concat(g.extraInteract || []);
+    const hits = this.ray.intersectObjects(objs, true);
+    const cands = []; const seen = new Set();
+    const add = (ent, t, point) => { const key = ent.item || ent.npc || ent.station || ent.decal || ent.bin || ent.slot || ent; if (seen.has(key)) return; seen.add(key); cands.push({ ent, t, point }); };
+    for (const h of hits) { let ob = h.object; while (ob && !ob.userData.ent) ob = ob.parent; if (ob && ob.userData.ent) add(ob.userData.ent, h.distance, h.point); }
+    const v = new THREE.Vector3();
+    // small items close to the crosshair
+    for (const it of g.items.items) {
+      if (it.state !== 'world') continue;
+      v.copy(it.obj.position).sub(o); const t = v.dot(d); if (t < 0.15 || t > 2.6) continue;
+      const off = v.addScaledVector(d, -t).length();
+      if (off < 0.13 + t * 0.03) add(it.obj.userData.ent || { type: 'item', item: it }, t, it.obj.position);
+    }
+    // customers who want what you're holding / bins when holding trash
+    const held = this.held;
+    if (held) {
+      const want = { soda: 'drink', chips: 'snack', coffee: 'coffee', pizza: 'food' }[held.kind];
+      if (want) for (const n of g.npcs) {
+        if (!n.ai || !n.ai.req || n.ai.req.type !== want || n.rag) continue;
+        const hp = n.headPos(); v.copy(hp).sub(o); const dist = v.length(); if (dist > 2.6) continue;
+        if (v.normalize().dot(d) > 0.9) add(n.hitbox.userData.ent, dist * 0.5, hp.clone());
+      }
+      if (held.def.trash) for (const b of g.world.bins) {
+        v.copy(b.pos).setY(0.6).sub(o); const dist = v.length(); if (dist > 2.4) continue;
+        if (v.normalize().dot(d) > 0.85) add({ type: 'bin', bin: b }, dist * 0.6, b.pos);
+      }
+    }
+    // walls block interaction
+    const wallT = g.world.rayWallDistance(o, d, 2.8);
+    let best = null, bestS = Infinity;
+    const PEN = { station: 0.3, npc: 0.1, item: -0.2, slot: -0.4, decal: 0.25, bin: 0.05 };
+    for (const c of cands) {
+      if (c.t > wallT + 0.05) continue;
+      const act = g.describe(c.ent, this);
+      if (!act) continue;
+      // real actions beat 'nice to have' actions, which beat plain info; distance breaks ties
+      const tier = (act.run || act.hold) ? (act.secondary ? 1.5 : 0) : 2.5;
+      const score = tier + c.t + (PEN[c.ent.type] || 0);
+      if (score < bestS) { bestS = score; best = { c, act }; }
+    }
+    this.focus = best ? best.c.ent : null; this.focusPoint = best ? best.c.point : null;
+    this.focusAction = best ? best.act : null;
+  }
 
   punch(charge) {
     const g = this.game;

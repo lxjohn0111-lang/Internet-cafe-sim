@@ -47,7 +47,7 @@ export class OS {
         const owned = cat === 'upgrades' && s.upgrades[it.id];
         const locked = s.level < it.lvl;
         const needs = it.needs && !s.upgrades[it.needs];
-        const maxed = it.id === 'station' && g.freeSlots().length === 0;
+        const maxed = it.id === 'station' && g.freeSlots().length <= g.pendingBoxes();
         const daily = it.daily && s.marketing >= 1 && it.id === 'flyers';
         let tag = '', btn;
         if (owned) { tag = '<span class="tag own">OWNED</span>'; btn = `<button class="btn small" disabled>Owned</button>`; }

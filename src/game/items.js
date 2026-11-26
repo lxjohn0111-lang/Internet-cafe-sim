@@ -5,14 +5,14 @@ import * as T from '../world/textures.js';
 import { audio } from '../core/audio.js';
 
 export const DEFS = {
-  soda: { name: 'Soda', need: 'drink', make: () => B.makeCan(Math.floor(Math.random() * 5)), shape: () => new CANNON.Cylinder(0.033, 0.033, 0.11, 10), mass: 0.35, hold: [0.0, -0.17, -0.42], sound: 'can' },
-  chips: { name: 'Chips', need: 'snack', make: () => B.makeChips(Math.floor(Math.random() * 4)), shape: () => new CANNON.Box(new CANNON.Vec3(0.07, 0.095, 0.025)), mass: 0.12, hold: [0.0, -0.17, -0.42] },
-  coffee: { name: 'Coffee', need: 'coffee', make: () => B.makeCup(true), shape: () => new CANNON.Cylinder(0.042, 0.035, 0.12, 10), mass: 0.3, hold: [0.0, -0.17, -0.42] },
+  soda: { name: 'Soda', need: 'drink', make: () => B.makeCan(Math.floor(Math.random() * 5)), shape: () => new CANNON.Cylinder(0.033, 0.033, 0.11, 10), mass: 0.35, hold: [0.13, -0.2, -0.45], sound: 'can' },
+  chips: { name: 'Chips', need: 'snack', make: () => B.makeChips(Math.floor(Math.random() * 4)), shape: () => new CANNON.Box(new CANNON.Vec3(0.07, 0.095, 0.025)), mass: 0.12, hold: [0.13, -0.2, -0.45] },
+  coffee: { name: 'Coffee', need: 'coffee', make: () => B.makeCup(true), shape: () => new CANNON.Cylinder(0.042, 0.035, 0.12, 10), mass: 0.3, hold: [0.13, -0.2, -0.45] },
   pizza: { name: 'Pizza', need: 'food', make: () => B.makePizzaBox(), shape: () => new CANNON.Box(new CANNON.Vec3(0.18, 0.023, 0.18)), mass: 0.5, hold: [0.0, -0.22, -0.5] },
-  trash_can: { name: 'Empty can', trash: true, make: () => B.makeCrushedCan(Math.floor(Math.random() * 5)), shape: () => new CANNON.Cylinder(0.034, 0.034, 0.05, 8), mass: 0.05, hold: [0.0, -0.17, -0.42], sound: 'can' },
-  trash_wrap: { name: 'Wrapper', trash: true, make: () => B.makeWrapper(Math.floor(Math.random() * 4)), shape: () => new CANNON.Box(new CANNON.Vec3(0.06, 0.008, 0.045)), mass: 0.03, hold: [0.0, -0.17, -0.42] },
-  trash_cup: { name: 'Old cup', trash: true, make: () => B.makeCup(false), shape: () => new CANNON.Cylinder(0.042, 0.035, 0.12, 10), mass: 0.05, hold: [0.0, -0.17, -0.42] },
-  duck: { name: 'Rubber duck', trash: true, duck: true, make: () => B.makeDuck(), shape: () => new CANNON.Sphere(0.06), mass: 0.08, hold: [0.0, -0.17, -0.42], sound: 'squeak' },
+  trash_can: { name: 'Empty can', trash: true, make: () => B.makeCrushedCan(Math.floor(Math.random() * 5)), shape: () => new CANNON.Cylinder(0.034, 0.034, 0.05, 8), mass: 0.05, hold: [0.13, -0.2, -0.45], sound: 'can' },
+  trash_wrap: { name: 'Wrapper', trash: true, make: () => B.makeWrapper(Math.floor(Math.random() * 4)), shape: () => new CANNON.Box(new CANNON.Vec3(0.06, 0.008, 0.045)), mass: 0.03, hold: [0.13, -0.2, -0.45] },
+  trash_cup: { name: 'Old cup', trash: true, make: () => B.makeCup(false), shape: () => new CANNON.Cylinder(0.042, 0.035, 0.12, 10), mass: 0.05, hold: [0.13, -0.2, -0.45] },
+  duck: { name: 'Rubber duck', trash: true, duck: true, make: () => B.makeDuck(), shape: () => new CANNON.Sphere(0.06), mass: 0.08, hold: [0.13, -0.2, -0.45], sound: 'squeak' },
   keyboard: { name: 'Keyboard', trash: true, make: () => B.makeKeyboard(2), shape: () => new CANNON.Box(new CANNON.Vec3(0.15, 0.015, 0.055)), mass: 0.6, hold: [0.0, -0.2, -0.45] },
   box_station: { name: 'PC Station kit', heavy: true, make: () => B.makeBoxItem(0.75, 0.55, 0.6, 'PC STATION'), shape: () => new CANNON.Box(new CANNON.Vec3(0.375, 0.275, 0.3)), mass: 8, hold: [0.0, -0.32, -0.75] },
   mop: { name: 'Mop', tool: 'mop', make: () => B.makeMop(), shape: () => new CANNON.Box(new CANNON.Vec3(0.05, 0.65, 0.05)), mass: 1, offsetY: 0.65 },
