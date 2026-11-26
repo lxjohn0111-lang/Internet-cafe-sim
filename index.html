@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <title>Ping Palace — Net Café Simulator</title>
+  <meta name="description" content="Run your own chaotic first-person net café. Serve gamers, fix PCs, punch troublemakers and survive the weirdest shifts ever." />
+  <script async src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>
+  <link rel="stylesheet" href="./src/style.css" />
+</head>
+<body>
+  <canvas id="game" tabindex="0"></canvas>
+
+  <!-- LOADING -->
+  <div id="loading">
+    <div class="load-logo">
+      <div class="load-ping">PING<span>PALACE</span></div>
+      <div class="load-sub">NET CAFÉ SIMULATOR</div>
+    </div>
+    <div class="load-bar"><div id="load-fill"></div></div>
+    <div id="load-text">Booting café…</div>
+    <div class="load-tip" id="load-tip"></div>
+  </div>
+
+  <!-- HUD -->
+  <div id="hud" class="hidden">
+    <div id="hud-tl" class="panel">
+      <div class="row1"><span id="hud-day">DAY 1</span><span id="hud-open" class="open">OPEN</span></div>
+      <div id="hud-clock">08:00</div>
+      <div id="hud-weekday">Monday</div>
+    </div>
+    <div id="hud-money" class="panel">
+      <div class="money-main"><span class="cur">$</span><span id="hud-cash">0</span></div>
+      <div class="money-sub">Register: <b id="hud-register">$0</b></div>
+    </div>
+    <div id="hud-tr" class="panel">
+      <div class="lvl"><div id="hud-lvl">1</div><div class="lvl-label">LEVEL</div></div>
+      <div class="lvl-right">
+        <div id="hud-stars"></div>
+        <div class="xpbar"><div id="hud-xp"></div></div>
+        <div id="hud-xptext">0 / 100 XP</div>
+      </div>
+    </div>
+    <div id="hud-obj" class="panel">
+      <div class="obj-title">TODAY'S GOALS</div>
+      <div id="hud-objlist"></div>
+    </div>
+    <div id="feed"></div>
+    <div id="banner"><div class="b-kicker" id="banner-kicker">BREAKING</div><div class="b-title" id="banner-title"></div><div class="b-desc" id="banner-desc"></div></div>
+    <div id="crosshair"><div class="ch-dot"></div></div>
+    <svg id="hold-ring" viewBox="0 0 64 64"><circle cx="32" cy="32" r="26" class="bg"/><circle id="hold-arc" cx="32" cy="32" r="26" class="fg"/></svg>
+    <div id="prompt"></div>
+    <div id="carry"></div>
+    <div id="charge"><div id="charge-fill"></div></div>
+    <div id="hints">
+      <span><kbd>WASD</kbd> Move</span><span><kbd>Shift</kbd> Run</span><span><kbd>E</kbd> Interact</span><span><kbd>LMB</kbd> Punch (hold = MEGA)</span><span><kbd>RMB</kbd> Throw</span><span><kbd>Tab</kbd> Phone</span>
+    </div>
+    <div id="pops"></div>
+    <div id="bubbles"></div>
+    <div id="waypoint"><div class="wp-arrow">▼</div><div class="wp-label" id="wp-label"></div></div>
+  </div>
+
+  <div id="clicktoplay" class="hidden"><div class="ctp-inner"><div class="ctp-big">CLICK TO TAKE OVER YOUR SHIFT</div><div class="ctp-small">Customers are already coming in…</div></div></div>
+
+  <div id="fade"></div>
+
+  <!-- IN-GAME OS -->
+  <div id="os" class="hidden">
+    <div class="os-window">
+      <div class="os-titlebar"><span class="os-logo">◉ PingOS</span><span id="os-title">Café Manager</span><button id="os-close" class="os-x">✕</button></div>
+      <div class="os-body">
+        <div class="os-side" id="os-side"></div>
+        <div class="os-content" id="os-content"></div>
+      </div>
+      <div class="os-taskbar"><span id="os-money">$0</span><span id="os-clock">08:00</span></div>
+    </div>
+  </div>
+
+  <!-- PAUSE -->
+  <div id="pause" class="hidden">
+    <div class="pause-card">
+      <div class="pause-logo">PING<span>PALACE</span></div>
+      <div class="pause-sub">Shift paused</div>
+      <button class="btn primary" id="btn-resume">▶ RESUME</button>
+      <div class="pause-section">
+        <label>Graphics <select id="set-quality"><option value="auto">Auto</option><option value="ultra">Ultra</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select></label>
+        <label>Mouse sensitivity <input type="range" id="set-sens" min="0.2" max="3" step="0.05" /></label>
+        <label>Field of view <input type="range" id="set-fov" min="60" max="100" step="1" /></label>
+        <label>Music <input type="range" id="set-music" min="0" max="1" step="0.01" /></label>
+        <label>Sound FX <input type="range" id="set-sfx" min="0" max="1" step="0.01" /></label>
+        <label class="chk"><input type="checkbox" id="set-invert" /> Invert Y</label>
+      </div>
+      <div class="pause-controls">
+        <b>Controls</b><br/>
+        WASD move · Shift sprint · Space jump · C crouch · Mouse look<br/>
+        E interact / pick up / give · Hold E to repair &amp; clean<br/>
+        LMB punch (hold for MEGA punch) · RMB throw item · Q drop · Tab phone shop
+      </div>
+      <button class="btn danger small" id="btn-reset">Start a brand new café</button>
+      <div class="credits">Characters: Mixamo (via three.js examples) · Robot: Tomás Laulhé (CC0) · Textures &amp; HDRIs: three.js examples / Poly Haven (CC0)</div>
+    </div>
+  </div>
+
+  <!-- DAY SUMMARY -->
+  <div id="summary" class="hidden">
+    <div class="sum-card">
+      <div class="sum-kicker">END OF DAY</div>
+      <div class="sum-title" id="sum-title">Day 1 Complete</div>
+      <div class="sum-stars" id="sum-stars"></div>
+      <div class="sum-grid" id="sum-grid"></div>
+      <div class="sum-profit"><span>NET PROFIT</span><b id="sum-profit">$0</b></div>
+      <div class="sum-btns">
+        <button class="btn reward" id="btn-double">📺 Watch ad: DOUBLE today's income</button>
+        <button class="btn primary" id="btn-nextday">☀ Start Day 2</button>
+      </div>
+      <div class="sum-funny" id="sum-funny"></div>
+    </div>
+  </div>
+
+  <!-- LEVEL UP -->
+  <div id="levelup" class="hidden"><div class="lu-inner"><div class="lu-kicker">LEVEL UP!</div><div class="lu-num" id="lu-num">2</div><div class="lu-unlocks" id="lu-unlocks"></div></div></div>
+
+  <!-- TOUCH -->
+  <div id="touch" class="hidden">
+    <div id="t-stick"><div id="t-knob"></div></div>
+    <div class="t-btns">
+      <button data-t="punch" class="t-btn big">👊</button>
+      <button data-t="interact" class="t-btn">E</button>
+      <button data-t="throw" class="t-btn">🫳</button>
+      <button data-t="jump" class="t-btn">⤒</button>
+      <button data-t="sprint" class="t-btn">»</button>
+      <button data-t="phone" class="t-btn">📱</button>
+    </div>
+  </div>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>

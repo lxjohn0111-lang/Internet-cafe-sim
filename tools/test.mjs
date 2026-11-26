@@ -1,0 +1,23 @@
+import { createRequire } from 'module'; const require = createRequire(import.meta.url); const { chromium } = require('playwright');
+const url = process.argv[2] || 'http://localhost:4173/';
+const shots = process.argv[3] || 'tools/shots';
+const wait = Number(process.argv[4] || 12000);
+const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+const logs = [];
+page.on('console', (m) => { const t = m.type(); if (t === 'error' || t === 'warning') logs.push(`[${t}] ${m.text()}`); });
+page.on('pageerror', (e) => logs.push(`[pageerror] ${e.message}\n${e.stack}`));
+page.on('requestfailed', (r) => { if (!r.url().includes('crazygames')) logs.push(`[reqfail] ${r.url()}`); });
+await page.goto(url, { waitUntil: 'load' });
+const t0 = Date.now();
+await page.waitForFunction(() => window.__game && window.__game.started, null, { timeout: 120000 }).catch(e => logs.push('[timeout] game never started: ' + e.message));
+console.log('started after', Date.now() - t0, 'ms');
+await page.screenshot({ path: `${shots}/01_start.png` });
+// fake pointer lock so the player is active
+await page.evaluate(() => { const g = window.__game; g.input.locked = true; document.getElementById('clicktoplay').classList.add('hidden'); });
+await page.waitForTimeout(wait);
+await page.screenshot({ path: `${shots}/02_after.png` });
+const info = await page.evaluate(() => { const g = window.__game; return { npcs: g.npcs.length, fps: g.renderer.qualityName, money: g.state.money, hours: g.hours.toFixed(2), calls: g.renderer.r.info.render.calls, tris: g.renderer.r.info.render.triangles, events: g.events.active.map(e=>e.def.id), states: g.npcs.map(n => n.ai && (n.ai.role + ':' + n.ai.state)).join(' ') }; });
+console.log(JSON.stringify(info, null, 1));
+console.log(logs.slice(0, 40).join('\n'));
+await browser.close();
