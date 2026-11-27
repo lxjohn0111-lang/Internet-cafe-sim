@@ -8,7 +8,9 @@
     "build": "vite build",
     "build:artifact": "BUILD_TARGET=artifact vite build && node tools/make-artifact.mjs",
     "assets": "node tools/optimize-assets.mjs",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "upload": "vite build && node tools/make-upload.mjs",
+    "media": "node tools/covers.mjs && node tools/trailer.mjs 1920 1080 tools/shots/vid_land 1 high && node tools/trailer.mjs 1080 1620 tools/shots/vid_port 1 high && bash tools/make-videos.sh"
   },
   "dependencies": {
     "cannon-es": "^0.20.0",

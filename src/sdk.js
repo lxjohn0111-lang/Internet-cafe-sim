@@ -77,23 +77,32 @@ export const SDK = {
     });
   },
 
-  // ---- persistence (CrazyGames data module, falls back to localStorage) ----
+  // ---- persistence: CrazyGames data module (cloud saves for logged-in players, local for guests).
+  // Outside CrazyGames we fall back to localStorage. Values are strings, so we store JSON.
+  get hasDataModule() {
+    try { return !!(this.ready && this._sdk.data && typeof this._sdk.data.setItem === 'function'); } catch (e) { return false; }
+  },
+  get saveSource() { return this.hasDataModule ? 'crazygames' : 'local'; },
   saveData(key, obj) {
     const str = JSON.stringify(obj);
-    try {
-      if (this.ready && this._sdk.data) { this._sdk.data.setItem(SAVE_PREFIX + key, str); return; }
-    } catch (e) { /* fallthrough */ }
-    try { localStorage.setItem(SAVE_PREFIX + key, str); } catch (e) { /* private mode */ }
+    if (this.hasDataModule) {
+      try { this._sdk.data.setItem(SAVE_PREFIX + key, str); return 'crazygames'; } catch (e) { console.warn('[SDK] data.setItem failed, using localStorage', e); }
+    }
+    try { localStorage.setItem(SAVE_PREFIX + key, str); return 'local'; } catch (e) { return null; }
   },
   loadData(key) {
-    let str = null;
-    try { if (this.ready && this._sdk.data) str = this._sdk.data.getItem(SAVE_PREFIX + key); } catch (e) { str = null; }
-    if (str == null) { try { str = localStorage.getItem(SAVE_PREFIX + key); } catch (e) { str = null; } }
+    let str = null, from = null;
+    if (this.hasDataModule) { try { str = this._sdk.data.getItem(SAVE_PREFIX + key); from = 'crazygames'; } catch (e) { str = null; } }
+    if (str == null) {
+      // older local save (e.g. played before the data module was available): migrate it
+      try { str = localStorage.getItem(SAVE_PREFIX + key); from = 'local'; } catch (e) { str = null; }
+      if (str && this.hasDataModule) { try { this._sdk.data.setItem(SAVE_PREFIX + key, str); localStorage.removeItem(SAVE_PREFIX + key); } catch (e) { /* keep local copy */ } }
+    }
     if (!str) return null;
-    try { return JSON.parse(str); } catch (e) { return null; }
+    try { const v = JSON.parse(str); console.info('[SDK] loaded save from', from); return v; } catch (e) { return null; }
   },
   clearData(key) {
-    try { if (this.ready && this._sdk.data) this._sdk.data.removeItem(SAVE_PREFIX + key); } catch (e) { /* ignore */ }
+    try { if (this.hasDataModule) this._sdk.data.removeItem(SAVE_PREFIX + key); } catch (e) { /* ignore */ }
     try { localStorage.removeItem(SAVE_PREFIX + key); } catch (e) { /* ignore */ }
   },
 };

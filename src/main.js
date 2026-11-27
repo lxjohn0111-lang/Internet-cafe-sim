@@ -64,9 +64,7 @@ class Game {
 
     // state
     const saved = SDK.loadData('save');
-    this.state = saved && saved.v === defaultState().v ? Object.assign(defaultState(), saved) : defaultState();
-    this.state.day_ = Object.assign({}, saved && saved.day_ ? saved.day_ : {}, {});
-    this.state.day_ = Object.assign(freshDayState(), this.state.day_);
+    this.state = mergeSave(defaultState(), saved);
     const st = this.state.settings;
 
     // renderer / scenes
@@ -154,6 +152,7 @@ class Game {
     document.addEventListener('visibilitychange', () => { if (document.hidden && this.started) { this.save(); if (!this.overlay && !this.osOpen) { if (this.input.touchMode || this.input.fallback) this.pause(); } } });
     const tp = $('t-pause'); if (tp) tp.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); if (!this.paused && !this.overlay) this.pause(); }, { passive: false });
     window.addEventListener('beforeunload', () => this.save());
+    window.addEventListener('pagehide', () => this.save());
   }
 
   applyQuality(q) {
@@ -222,12 +221,14 @@ class Game {
       const lu = $('levelup'); lu.classList.add('hidden'); void lu.offsetWidth; lu.classList.remove('hidden'); document.body.classList.add('lvlup'); clearTimeout(this._lu); this._lu = setTimeout(() => { lu.classList.add('hidden'); document.body.classList.remove('lvlup'); }, 3300);
       this.hud.toast(`⭐ <b>LEVEL ${s.level}!</b> ${un ? 'New stuff in the shop!' : ''}`, 'gold');
       SDK.happytime();
+      this.save();
     }
   }
   unlock(id) {
     const s = this.state; if (s.ach[id]) return; const a = ACHIEVEMENTS.find((x) => x.id === id); if (!a) return;
     s.ach[id] = true; s.money += 50; this.addXP(30);
     this.hud.toast(`🏆 <b>${a.name}</b> — ${a.desc} (+$50)`, 'gold', 5500); audio.play('achieve');
+    if (this.started) this.save();
   }
   streak() {
     this.streakN = this.streakT > 0 ? this.streakN + 1 : 1; this.streakT = 25;
@@ -542,7 +543,7 @@ class Game {
   }
   closeOS(byClick) {
     if (!this.osOpen) return;
-    this.osOpen = false; this.os.hide(); audio.play('click');
+    this.osOpen = false; this.os.hide(); audio.play('click'); this.save();
     if (byClick) this.input.lock(); else $('clicktoplay').classList.remove('hidden');
   }
   setupMenus() {
@@ -638,7 +639,13 @@ class Game {
     if (this.noSave || !this.state) return;
     const s = this.state;
     s.pendingBoxes = this.items ? this.pendingBoxes() : 0;
-    SDK.saveData('save', s);
+    s.crypto.hist = s.crypto.hist.slice(-120).map((v) => Math.round(v * 100) / 100);
+    s.history = s.history.slice(-30);
+    s.savedAt = Date.now();
+    const where = SDK.saveData('save', s);
+    this.saveT = 0;
+    const el = $('hud-save');
+    if (el && where) { el.title = where === 'crazygames' ? 'Saved to your CrazyGames account' : 'Saved on this device'; el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
   }
 
   updateCrypto() {
@@ -653,6 +660,7 @@ class Game {
   // ---------- main loop ----------
   loop() {
     requestAnimationFrame(() => this.loop());
+    if (this.manual) { this.last = performance.now(); return; } // frames driven externally (trailer capture)
     const now = performance.now();
     const rdt = Math.min(0.05, (now - this.last) / 1000); this.last = now;
     this.frame(rdt, true);
@@ -696,7 +704,7 @@ class Game {
       this.refreshGhosts();
       if (this.streakT > 0) this.streakT -= dt;
       if (this.chatCd > 0) this.chatCd -= dt;
-      this.saveT += dt; if (this.saveT > 30) { this.saveT = 0; this.save(); }
+      this.saveT += dt; if (this.saveT > 20) this.save();
       // ambience
       const occ = this.stations.filter((s2) => s2.occupant).length;
       audio.setLoop('hum', this.world.power ? 0.02 + occ * 0.006 : 0);
@@ -754,6 +762,20 @@ class Game {
 }
 
 function freshDayState() { return freshDay(); }
+// Merge a save (from any older version) over fresh defaults so new fields always exist.
+function mergeSave(def, saved) {
+  if (!saved || typeof saved !== 'object') return def;
+  const out = Object.assign({}, def, saved);
+  for (const k of ['stats', 'settings', 'stock', 'crypto', 'upgrades', 'ach']) out[k] = Object.assign({}, def[k], saved[k] || {});
+  out.day_ = Object.assign(freshDay(), saved.day_ || {});
+  if (!Array.isArray(out.stations) || !out.stations.length) out.stations = def.stations;
+  if (!Array.isArray(out.objectives) || !out.objectives.length) out.objectives = def.objectives;
+  if (!Array.isArray(out.history)) out.history = [];
+  if (!Array.isArray(out.crypto.hist)) out.crypto.hist = [];
+  for (const k of ['money', 'register', 'day', 'minutes', 'level', 'xp', 'rep', 'price']) if (!isFinite(out[k])) out[k] = def[k];
+  out.v = def.v;
+  return out;
+}
 function tick() { return new Promise((r) => setTimeout(r, 0)); }
 
 const game = new Game();

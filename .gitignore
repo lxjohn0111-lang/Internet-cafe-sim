@@ -4,3 +4,4 @@ dist/
 .DS_Store
 tools/shots/
 dist-artifact/
+!crazygames-upload/*.zip

@@ -36,6 +36,9 @@ kbd { display: inline-block; min-width: 20px; padding: 1px 6px; border-radius: 4
 #hud-tl { left: 16px; top: 16px; padding: 10px 16px; min-width: 150px; }
 #hud-tl .row1 { display: flex; justify-content: space-between; gap: 10px; font-weight: 800; font-size: 12px; letter-spacing: .12em; }
 #hud-open { padding: 1px 7px; border-radius: 4px; font-size: 10px; }
+#hud-save { font-size: 11px; opacity: 0; margin-left: auto; margin-right: 2px; }
+#hud-save.flash { animation: saved 1.6s ease-out; }
+@keyframes saved { 0% { opacity: 0; } 15% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; } }
 #hud-open.open { background: rgba(77,255,154,.2); color: var(--good); }
 #hud-open.closed { background: rgba(255,77,94,.2); color: var(--bad); }
 #hud-clock { font: 700 34px var(--mono); letter-spacing: .02em; text-shadow: 0 0 12px rgba(53,242,255,.4); }
