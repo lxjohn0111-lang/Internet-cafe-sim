@@ -19,23 +19,19 @@ for (const f of formats) {
     const from = V(2.15, 0, 1.2); const look = V(0.9, f.h > f.w ? 1.5 : 1.35, 0.15);
     const a = aim(from, look); p.pos.copy(from); p.yaw = a.yaw; p.pitch = a.pitch; p.vel.set(0, 0, 0);
     p.baseFov = f.h > f.w ? 80 : 72;
-    for (let i = 0; i < 8; i++) window.__step(1 / 30, false);
-    // charge, then MEGA punch through the real input path
-    const m = g.input.mouse; m.pressed[0] = true; m.down[0] = true;
-    for (let i = 0; i < 40; i++) { th.lookAt(p.pos); p.pos.copy(from); p.yaw = a.yaw; p.pitch = a.pitch; m.down[0] = true; window.__step(1 / 30, false); }
-    m.down[0] = false; m.released[0] = true;
-    for (let i = 0; i < 22; i++) { p.pos.copy(from); p.yaw = a.yaw; p.pitch = a.pitch; window.__step(1 / 30, false); }
-    // cut to a side angle so the flying troublemaker is seen in profile
+    for (let i = 0; i < 8; i++) { th.lookAt(p.pos); window.__step(1 / 30, false); }
+    // the hit: launch the troublemaker backwards (moderate power keeps him in frame, below the ceiling)
+    const fwd = V(th.root.position.x - from.x, 0, th.root.position.z - from.z).normalize();
+    const hitP = th.headPos().clone().add(V(0, -0.35, 0));
+    th.knock(V(fwd.x, 0.62, fwd.z).normalize(), 9.5, hitP, 'torso');
+    g.fx.hit(hitP); g.fx.sparks(hitP, 30, [1, 0.85, 0.4]);
+    g.slowT = 0;
+    for (let i = 0; i < 8; i++) { p.pos.copy(from); p.yaw = a.yaw; p.pitch = a.pitch; window.__step(1 / 30, false); }
     const P = th.rag ? th.rag.pelvisPos.clone() : th.headPos().clone();
-    const fwd = V(-Math.sin(a.yaw), 0, -Math.cos(a.yaw)); const side = V(-fwd.z, 0, fwd.x);
-    const cam = P.clone().addScaledVector(side, f.h > f.w ? 2.3 : 2.9).addScaledVector(fwd, -0.9); cam.y = 0;
-    cam.x = Math.max(-7.4, Math.min(7.4, cam.x)); cam.z = Math.max(-5.4, Math.min(5.4, cam.z));
-    const b = aim(cam, P.clone().add(V(0, f.h > f.w ? 0.05 : 0.15, 0)));
-    g.fx.glow.n = 0; g.fx.soft.n = 0; g.fx.flat.n = 0; g.slowT = 0;
-    g.fx.sparks(P.clone().add(V(0, 0.3, 0)), 26, [1, 0.85, 0.4]);
+    const b = aim(from, P.clone().add(V(0, f.h > f.w ? 0.0 : 0.1, 0)));
     p.punchT = 1; p.charge = 0; p.charging = false;
-    for (let i = 0; i < 3; i++) { p.pos.copy(cam); p.yaw = b.yaw; p.pitch = b.pitch; p.vel.set(0, 0, 0); window.__step(1 / 30, false); }
-    p.pos.copy(cam); p.yaw = b.yaw; p.pitch = b.pitch;
+    p.pos.copy(from); p.yaw = b.yaw; p.pitch = b.pitch; p.vel.set(0, 0, 0);
+    window.__step(1 / 120, false);
     // a few customers react
     g.seatedCustomers().slice(0, 2).forEach((n, i) => n.say(['WHOA!', 'LET\'S GOOO!'][i], 3, { shout: true, voice: false }));
     document.getElementById('hud').style.display = 'none';
