@@ -24,12 +24,18 @@ for (const f of formats) {
     const m = g.input.mouse; m.pressed[0] = true; m.down[0] = true;
     for (let i = 0; i < 40; i++) { th.lookAt(p.pos); p.pos.copy(from); p.yaw = a.yaw; p.pitch = a.pitch; m.down[0] = true; window.__step(1 / 30, false); }
     m.down[0] = false; m.released[0] = true;
-    for (let i = 0; i < 9; i++) { p.pos.copy(from); p.yaw = a.yaw; p.pitch = a.pitch; window.__step(1 / 30, false); }
-    // calm the particles down and bring the fists back to a clean pose for the still
-    g.fx.glow.n = 0; g.fx.soft.n = 0; g.fx.flat.n = 0;
-    const pp = th.rag ? th.rag.pelvisPos.clone() : th.headPos().clone(); g.fx.sparks(pp, 18); g.fx.confetti(pp.clone().add(V(0, 0.4, 0)), 40);
-    p.punchT = 1; p.charge = 0;
-    for (let i = 0; i < 3; i++) { p.pos.copy(from); p.yaw = a.yaw; p.pitch = a.pitch; window.__step(1 / 60, false); }
+    for (let i = 0; i < 22; i++) { p.pos.copy(from); p.yaw = a.yaw; p.pitch = a.pitch; window.__step(1 / 30, false); }
+    // cut to a side angle so the flying troublemaker is seen in profile
+    const P = th.rag ? th.rag.pelvisPos.clone() : th.headPos().clone();
+    const fwd = V(-Math.sin(a.yaw), 0, -Math.cos(a.yaw)); const side = V(-fwd.z, 0, fwd.x);
+    const cam = P.clone().addScaledVector(side, f.h > f.w ? 2.3 : 2.9).addScaledVector(fwd, -0.9); cam.y = 0;
+    cam.x = Math.max(-7.4, Math.min(7.4, cam.x)); cam.z = Math.max(-5.4, Math.min(5.4, cam.z));
+    const b = aim(cam, P.clone().add(V(0, f.h > f.w ? 0.05 : 0.15, 0)));
+    g.fx.glow.n = 0; g.fx.soft.n = 0; g.fx.flat.n = 0; g.slowT = 0;
+    g.fx.sparks(P.clone().add(V(0, 0.3, 0)), 26, [1, 0.85, 0.4]);
+    p.punchT = 1; p.charge = 0; p.charging = false;
+    for (let i = 0; i < 3; i++) { p.pos.copy(cam); p.yaw = b.yaw; p.pitch = b.pitch; p.vel.set(0, 0, 0); window.__step(1 / 30, false); }
+    p.pos.copy(cam); p.yaw = b.yaw; p.pitch = b.pitch;
     // a few customers react
     g.seatedCustomers().slice(0, 2).forEach((n, i) => n.say(['WHOA!', 'LET\'S GOOO!'][i], 3, { shout: true, voice: false }));
     document.getElementById('hud').style.display = 'none';
